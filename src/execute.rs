@@ -4,12 +4,12 @@ use anyhow::Result;
 use automerge::{Automerge, ReadDoc, Value};
 use clap::Args;
 use iroh::{Endpoint, endpoint::presets, protocol::Router};
-use std::{collections::HashMap, process::Command};
+use std::{collections::HashMap, process::Command, env};
 use tokio::sync::mpsc;
 
 #[derive(Args)]
 pub struct Execute {
-    /// If set, only variables from the specified profile will be included, and global variables will be ignored. By default, variables from the global profile will be included and overridden by any variables in the specified profile.
+    /// If set, only variables from the specified profile will be included, and global variables will be ignored.
     #[arg(long)]
     exclusive: bool,
 
@@ -20,6 +20,10 @@ pub struct Execute {
     /// The remote endpoint ID to connect to for syncing the latest state before executing the command.
     #[arg(short, long, env = "IROH_REMOTE_ID")]
     remote_id: iroh::EndpointId,
+
+    /// Command and arguments to execute. If omitted, an interactive shell is launched.
+    #[arg(trailing_var_arg = true)]
+    command: Vec<String>,
 }
 
 pub fn automerge_to_hashmap(doc: &Automerge, profile: &str) -> Option<HashMap<String, String>> {
@@ -42,11 +46,27 @@ pub fn automerge_to_hashmap(doc: &Automerge, profile: &str) -> Option<HashMap<St
     Some(map)
 }
 
+fn get_shell_command() -> (String, Vec<String>) {
+    // Prefer explicit shells from env vars; fall back to sensible defaults per-platform.
+    if cfg!(windows) {
+        if let Ok(comspec) = env::var("COMSPEC") {
+            return (comspec, Vec::new());
+        }
+        ("cmd.exe".to_string(), Vec::new())
+    } else {
+        if let Ok(shell) = env::var("SHELL") {
+            return (shell, Vec::new());
+        }
+        ("sh".to_string(), Vec::new())
+    }
+}
+
 pub async fn run(
     Execute {
         profile,
         remote_id,
         exclusive,
+        command,
     }: Execute,
 ) -> Result<()> {
     let automerge = IrohAutomergeProtocol::new(Automerge::new(), mpsc::channel(10).0);
@@ -76,6 +96,26 @@ pub async fn run(
         global_vars.into_iter().chain(vars).collect()
     };
 
-    Command::new("bash").envs(merged).spawn()?.wait()?;
+    // Build command: either user-specified or fallback to shell.
+    let mut cmd = if command.is_empty() {
+        let (shell, args) = get_shell_command();
+        let mut c = Command::new(shell);
+        if !args.is_empty() {
+            c.args(args);
+        }
+        c
+    } else {
+        let mut c = Command::new(&command[0]);
+        if command.len() > 1 {
+            c.args(&command[1..]);
+        }
+        c
+    };
+
+    cmd.envs(&merged);
+    let status = cmd.status()?;
+    if !status.success() {
+        return Err(anyhow::anyhow!("Command exited with non-zero status: {}", status));
+    }
     Ok(())
 }
