@@ -26,7 +26,7 @@ pub struct List {
     list_type: ListType,
 
     /// The remote endpoint ID to connect to for syncing the latest state before performing the list operation.
-    #[arg(short, long)]
+    #[arg(short, long, env = "IROH_REMOTE_ID")]
     remote_id: iroh::EndpointId,
 }
 

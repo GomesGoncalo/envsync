@@ -16,7 +16,7 @@ pub struct Get {
     profile: String,
 
     /// The remote endpoint ID to connect to for syncing the latest state before retrieving the value.
-    #[arg(short, long)]
+    #[arg(short, long, env = "IROH_REMOTE_ID")]
     remote_id: iroh::EndpointId,
 }
 
