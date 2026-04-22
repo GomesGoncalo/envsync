@@ -1,4 +1,4 @@
-use crate::protocol::IrohAutomergeProtocol;
+use crate::{constants::REMOTE_ENV, protocol::IrohAutomergeProtocol};
 
 use anyhow::Result;
 use automerge::{Automerge, ObjType, ReadDoc, Value, transaction::Transactable};
@@ -26,7 +26,7 @@ pub struct Delete {
     profile: String,
 
     /// The remote endpoint ID to connect to for syncing the latest state before performing the delete operation.
-    #[arg(short, long, env = "IROH_REMOTE_ID")]
+    #[arg(short, long, env = REMOTE_ENV)]
     remote_id: iroh::EndpointId,
 }
 
@@ -43,7 +43,6 @@ pub async fn run(
         .accept(IrohAutomergeProtocol::ALPN, automerge.clone())
         .spawn();
 
-    let endpoint_id = iroh.endpoint().id();
     let endpoint_addr = iroh::EndpointAddr::new(remote_id);
 
     if let Ok(conn) = iroh

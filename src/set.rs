@@ -1,4 +1,4 @@
-use crate::protocol::IrohAutomergeProtocol;
+use crate::{constants::REMOTE_ENV, protocol::IrohAutomergeProtocol};
 
 use anyhow::Result;
 use automerge::{Automerge, ObjType, ReadDoc, Value, transaction::Transactable};
@@ -19,7 +19,7 @@ pub struct Set {
     profile: String,
 
     /// The remote endpoint ID to connect to for syncing the latest state before setting the key-value pair.
-    #[arg(short, long, env = "IROH_REMOTE_ID")]
+    #[arg(short, long, env = REMOTE_ENV)]
     remote_id: iroh::EndpointId,
 }
 

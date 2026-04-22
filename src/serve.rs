@@ -37,7 +37,7 @@ static CONFIG_DIR: LazyLock<String> = LazyLock::new(|| {
     dirs_next::config_dir()
         .map(|d| {
             let mut p = d;
-            p.push("envsync");
+            p.push(env!("CARGO_BIN_NAME"));
             p.to_string_lossy().to_string()
         })
         .unwrap_or_else(|| ".".to_string())
