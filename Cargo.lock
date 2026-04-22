@@ -946,7 +946,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "envsync"
+name = "envsync-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
