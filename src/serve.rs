@@ -9,7 +9,7 @@ use tokio::sync::mpsc;
 
 #[derive(Args)]
 struct File {
-    /// The directory to store the Automerge document in. By default, this will be a directory named `envsync` within the user's config directory (e.g. `~/.config/envsync` on Linux).
+    /// The directory to store the Automerge document in. By default, this will be a directory named `envsync-cli` within the user's config directory (e.g. `~/.config/envsync-cli` on Linux).
     #[arg(short, long, default_value = &**CONFIG_DIR)]
     data_store: PathBuf,
 

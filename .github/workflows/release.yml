@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 env:
-  PACKAGE_NAME: envsync
+  PACKAGE_NAME: envsync-cli
 
 jobs:
   build:

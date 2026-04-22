@@ -1,5 +1,5 @@
 [package]
-name = "envsync"
+name = "envsync-cli"
 version = "0.1.0"
 edition = "2024"
 description = "Synchronize environment variables across machines using Automerge and iroh networking."
