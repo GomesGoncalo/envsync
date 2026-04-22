@@ -1,3 +1,5 @@
+use crate::constants::MAGIC;
+
 use argon2::Argon2;
 use chacha20poly1305::{
     XChaCha20Poly1305, XNonce,
@@ -22,7 +24,6 @@ pub fn encrypt_bytes(plaintext: &[u8], pass: &Option<String>) -> anyhow::Result<
 
     let pass = pass.as_ref().unwrap();
 
-    const MAGIC: &[u8; 8] = b"ENVSYNC1";
     let mut salt = [0u8; 16];
     rand::rngs::OsRng.fill_bytes(&mut salt);
 
@@ -54,7 +55,6 @@ pub fn decrypt_bytes(encrypted: &[u8], pass: &Option<String>) -> anyhow::Result<
 
     let pass = pass.as_ref().unwrap();
 
-    const MAGIC: &[u8; 8] = b"ENVSYNC1";
     if encrypted.len() < MAGIC.len() + 16 + 24 {
         return Err(anyhow::anyhow!("Encrypted file too short"));
     }

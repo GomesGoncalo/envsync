@@ -1,10 +1,10 @@
-use crate::{protocol::IrohAutomergeProtocol, utils};
+use crate::{constants::REMOTE_ENV, protocol::IrohAutomergeProtocol, utils};
 
 use anyhow::Result;
 use automerge::{Automerge, ReadDoc, Value};
 use clap::Args;
 use iroh::{Endpoint, endpoint::presets, protocol::Router};
-use std::{collections::HashMap, process::Command, env};
+use std::{collections::HashMap, env, process::Command};
 use tokio::sync::mpsc;
 
 #[derive(Args)]
@@ -18,7 +18,7 @@ pub struct Execute {
     profile: String,
 
     /// The remote endpoint ID to connect to for syncing the latest state before executing the command.
-    #[arg(short, long, env = "IROH_REMOTE_ID")]
+    #[arg(short, long, env = REMOTE_ENV)]
     remote_id: iroh::EndpointId,
 
     /// Command and arguments to execute. If omitted, an interactive shell is launched.
@@ -115,7 +115,10 @@ pub async fn run(
     cmd.envs(&merged);
     let status = cmd.status()?;
     if !status.success() {
-        return Err(anyhow::anyhow!("Command exited with non-zero status: {}", status));
+        return Err(anyhow::anyhow!(
+            "Command exited with non-zero status: {}",
+            status
+        ));
     }
     Ok(())
 }
