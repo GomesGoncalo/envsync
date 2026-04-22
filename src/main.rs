@@ -4,6 +4,7 @@ use commands::Commands;
 
 mod commands;
 mod constants;
+mod crypto;
 mod delete;
 mod execute;
 mod get;
@@ -23,11 +24,7 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-
     let opts = Cli::parse();
-
     opts.command.run().await?;
-
     Ok(())
 }

@@ -90,7 +90,7 @@ impl IrohAutomergeProtocol {
             }
         }
 
-        conn.close(0u32.into(), b"thanks, bye!");
+        conn.close(0u32.into(), b"bye!");
 
         Ok(())
     }

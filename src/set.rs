@@ -37,10 +37,6 @@ pub async fn run(
         .accept(IrohAutomergeProtocol::ALPN, automerge.clone())
         .spawn();
 
-    let endpoint_id = iroh.endpoint().id();
-
-    println!("Running\nEndpoint Id: {endpoint_id}",);
-
     let endpoint_addr = iroh::EndpointAddr::new(remote_id);
 
     if let Ok(conn) = iroh
