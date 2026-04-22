@@ -123,11 +123,15 @@ jobs:
         shell: bash
 
       - name: Optionally sign artifacts (GPG)
-        if: ${{ secrets.GPG_PRIVATE_KEY != '' && secrets.GPG_PASSPHRASE != '' }}
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
+          set -euo pipefail
+          if [ -z "${GPG_PRIVATE_KEY:-}" ] || [ -z "${GPG_PASSPHRASE:-}" ]; then
+            echo "GPG secrets not set; skipping signing step"
+            exit 0
+          fi
           mkdir -p ~/.gnupg
           echo "$GPG_PRIVATE_KEY" | gpg --batch --import
           for f in dist/all/*; do
