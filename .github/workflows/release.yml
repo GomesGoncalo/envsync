@@ -123,7 +123,7 @@ jobs:
         shell: bash
 
       - name: Optionally sign artifacts (GPG)
-        if: secrets.GPG_PRIVATE_KEY != '' && secrets.GPG_PASSPHRASE != ''
+        if: ${{ secrets.GPG_PRIVATE_KEY != '' && secrets.GPG_PASSPHRASE != '' }}
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
