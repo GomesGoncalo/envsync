@@ -107,6 +107,11 @@ jobs:
           sha256sum -c ../checksums.txt
         shell: bash
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Generate release notes
         run: |
           git fetch --tags --unshallow || true
