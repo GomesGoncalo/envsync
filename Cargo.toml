@@ -2,6 +2,11 @@
 name = "envsync"
 version = "0.1.0"
 edition = "2024"
+description = "Synchronize environment variables across machines using Automerge and iroh networking."
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/GomesGoncalo/envsync"
+license-file = "LICENSE"
 
 [dependencies]
 anyhow = "1.0.80"
