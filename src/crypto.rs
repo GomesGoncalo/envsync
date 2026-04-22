@@ -5,7 +5,6 @@ use chacha20poly1305::{
     XChaCha20Poly1305, XNonce,
     aead::{Aead, KeyInit},
 };
-use rand::RngCore;
 use zeroize::Zeroize;
 
 fn derive_key(pass: &str, salt: &[u8]) -> anyhow::Result<[u8; 32]> {
@@ -25,13 +24,13 @@ pub fn encrypt_bytes(plaintext: &[u8], pass: &Option<String>) -> anyhow::Result<
     let pass = pass.as_ref().unwrap();
 
     let mut salt = [0u8; 16];
-    rand::rngs::OsRng.fill_bytes(&mut salt);
+    getrandom::fill(&mut salt).map_err(|e| anyhow::anyhow!(e))?;
 
     let key = derive_key(pass, &salt)?;
     let cipher = XChaCha20Poly1305::new(&key.into());
 
     let mut nonce = [0u8; 24];
-    rand::rngs::OsRng.fill_bytes(&mut nonce);
+    getrandom::fill(&mut nonce).map_err(|e| anyhow::anyhow!(e))?;
 
     let ct = cipher
         .encrypt(XNonce::from_slice(&nonce), plaintext)
