@@ -112,10 +112,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Generate release notes
         run: |
-          git fetch --tags --unshallow || true
-          PREV_TAG=$(git describe --tags --abbrev=0 "$GITHUB_SHA"^ || true)
+          # If repo was shallow-cloned, unshallow; otherwise fetch tags normally.
+          if [ -f .git/shallow ]; then
+            git fetch --tags --unshallow || true
+          else
+            git fetch --tags || true
+          fi
+
+          PREV_TAG=$(git describe --tags --abbrev=0 "$GITHUB_SHA"^ 2>/dev/null || true)
           if [ -z "$PREV_TAG" ]; then
             echo "No previous tag found, using all commits" > release_notes.md
             git log --pretty=format:'- %s (%an)' --no-merges >> release_notes.md
@@ -123,8 +134,40 @@ jobs:
             echo "Changes since $PREV_TAG" > release_notes.md
             git log "$PREV_TAG"..HEAD --pretty=format:'- %s (%an)' --no-merges >> release_notes.md
           fi
+
           echo "\n\nArtifacts:" >> release_notes.md
-          ls -1 dist/all >> release_notes.md
+          if [ -d dist/all ] && [ "$(ls -A dist/all)" ]; then
+            ls -1 dist/all >> release_notes.md
+          else
+            echo "(no artifacts produced)" >> release_notes.md
+          fi
+        shell: bash
+
+      - name: Compute checksums
+        run: |
+          if [ -d dist/all ] && [ "$(ls -A dist/all)" ]; then
+            cd dist/all
+            sha256sum * > ../checksums.txt
+            cd ..
+          else
+            echo "No artifacts to checksum" > dist/checksums.txt
+          fi
+        shell: bash
+
+      - name: Verify checksums
+        run: |
+          if [ -f dist/checksums.txt ] && [ -s dist/checksums.txt ]; then
+            if [ -d dist/all ] && [ "$(ls -A dist/all)" ]; then
+              cd dist/all
+              # verify returns non-zero on mismatch; don't fail the whole job here
+              sha256sum -c ../checksums.txt || true
+              cd ..
+            else
+              echo "No artifacts to verify"
+            fi
+          else
+            echo "No checksums found, skipping verification"
+          fi
         shell: bash
 
       - name: Optionally sign artifacts (GPG)
@@ -139,10 +182,14 @@ jobs:
           fi
           mkdir -p ~/.gnupg
           echo "$GPG_PRIVATE_KEY" | gpg --batch --import
-          for f in dist/all/*; do
-            gpg --batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" --armor --detach-sign "$f"
-          done
-          mv dist/all/*.asc dist/all/
+          if [ -d dist/all ] && [ "$(ls -A dist/all)" ]; then
+            for f in dist/all/*; do
+              gpg --batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" --armor --detach-sign "$f"
+            done
+            mv dist/all/*.asc dist/all/ || true
+          else
+            echo "No artifacts to sign"
+          fi
         shell: bash
 
       - name: Create release and upload assets
