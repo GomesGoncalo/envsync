@@ -1,0 +1,151 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+env:
+  PACKAGE_NAME: envsync
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Build (release)
+        run: cargo build --release
+
+      - name: Prepare dist
+        run: mkdir -p dist
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cp target/release/${{ env.PACKAGE_NAME }} dist/${{ env.PACKAGE_NAME }}-linux
+          chmod +x dist/${{ env.PACKAGE_NAME }}-linux
+          tar -czf dist/${{ env.PACKAGE_NAME }}-linux.tar.gz -C dist ${{ env.PACKAGE_NAME }}-linux
+          zip -j dist/${{ env.PACKAGE_NAME }}-linux.zip dist/${{ env.PACKAGE_NAME }}-linux
+        shell: bash
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          cp target/release/${{ env.PACKAGE_NAME }} dist/${{ env.PACKAGE_NAME }}-macos
+          chmod +x dist/${{ env.PACKAGE_NAME }}-macos
+          zip -j dist/${{ env.PACKAGE_NAME }}-macos.zip dist/${{ env.PACKAGE_NAME }}-macos
+
+          # Create a simple DMG containing the binary
+          DMG_DIR=$(mktemp -d)
+          mkdir -p "$DMG_DIR/Applications"
+          cp dist/${{ env.PACKAGE_NAME }}-macos "$DMG_DIR/${{ env.PACKAGE_NAME }}"
+          hdiutil create -volname "${{ env.PACKAGE_NAME }}" -srcfolder "$DMG_DIR" -ov -format UDZO dist/${{ env.PACKAGE_NAME }}-macos.dmg
+          rm -rf "$DMG_DIR"
+        shell: bash
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          New-Item -ItemType Directory -Force dist
+          Copy-Item -Path target\release\${{ env.PACKAGE_NAME }}.exe -Destination dist\${{ env.PACKAGE_NAME }}-windows.exe
+          Compress-Archive -Path dist\${{ env.PACKAGE_NAME }}-windows.exe -DestinationPath dist\${{ env.PACKAGE_NAME }}-windows.zip -Force
+        shell: powershell
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-${{ matrix.os }}
+          path: dist/*
+
+  release:
+    name: Create GitHub Release and upload assets
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: ./dist
+
+      - name: Normalize artifact locations
+        run: |
+          mkdir -p ./dist/all
+          find ./dist -type f -maxdepth 2 -print0 | while IFS= read -r -d '' f; do
+            mv "$f" ./dist/all/
+          done
+          ls -lah ./dist/all
+        shell: bash
+
+      - name: Compute checksums
+        run: |
+          cd dist/all
+          sha256sum * > ../checksums.txt
+          cd ..
+        shell: bash
+
+      - name: Verify checksums
+        run: |
+          cd dist/all
+          sha256sum -c ../checksums.txt
+        shell: bash
+
+      - name: Generate release notes
+        run: |
+          git fetch --tags --unshallow || true
+          PREV_TAG=$(git describe --tags --abbrev=0 "$GITHUB_SHA"^ || true)
+          if [ -z "$PREV_TAG" ]; then
+            echo "No previous tag found, using all commits" > release_notes.md
+            git log --pretty=format:'- %s (%an)' --no-merges >> release_notes.md
+          else
+            echo "Changes since $PREV_TAG" > release_notes.md
+            git log "$PREV_TAG"..HEAD --pretty=format:'- %s (%an)' --no-merges >> release_notes.md
+          fi
+          echo "\n\nArtifacts:" >> release_notes.md
+          ls -1 dist/all >> release_notes.md
+        shell: bash
+
+      - name: Optionally sign artifacts (GPG)
+        if: secrets.GPG_PRIVATE_KEY != '' && secrets.GPG_PASSPHRASE != ''
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          mkdir -p ~/.gnupg
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          for f in dist/all/*; do
+            gpg --batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" --armor --detach-sign "$f"
+          done
+          mv dist/all/*.asc dist/all/
+        shell: bash
+
+      - name: Create release and upload assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/all/*,dist/checksums.txt,release_notes.md
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: release_notes.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup
+        run: rm -rf dist
+        shell: bash
