@@ -1,0 +1,20 @@
+services:
+  node1:
+    build: .
+    container_name: envsync-node1
+    networks:
+      - envsync
+
+  node2:
+    build: .
+    container_name: envsync-node2
+    networks:
+      - envsync
+
+networks:
+  envsync:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: fd00:dead:beef::/48

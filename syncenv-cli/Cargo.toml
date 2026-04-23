@@ -1,0 +1,14 @@
+[package]
+name = "syncenv-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+common = { path = "../common" }
+tarpc = { version = "0.37", features = ["full", "tokio1"] }
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+futures-util = "0.3"
+tracing = "0.1.44"
+clap = { version = "4.0", features = ["derive"] }
